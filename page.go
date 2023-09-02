@@ -1,4 +1,4 @@
-package paginator
+package pagify
 
 import "errors"
 

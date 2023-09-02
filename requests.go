@@ -1,7 +1,9 @@
-package paginator
+package pagify
 
 import (
 	"net/http"
+
+	"github.com/SenatorSpooky/go-pagify/pkg/utils"
 )
 
 type Response interface {
@@ -11,7 +13,7 @@ type Response interface {
 	GetBodyAs(interface{}) error   // Get the body of the response as the type of the passed interface
 }
 
-// creates a new object implementing the Response and PrevPresonse interface
+// creates a new object implementing the Response interface
 // accepts a http.Request, http.Response and zero or one interfaces representing the request's body
 // will not write a body if a number of interfaces other than 1 are passed
 func NewResponse(req *http.Request, resp *http.Response, b ...interface{}) Response {
@@ -56,5 +58,5 @@ func (r *response) SetBody(body interface{}) {
 }
 
 func (r *response) GetBodyAs(v interface{}) error {
-	return nil
+	return utils.CopyInterfaceValues(r.body, v)
 }

@@ -1,27 +1,16 @@
 package utils
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
-func GetPointerToInterface(v interface{}) interface{} {
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Pointer {
-		if tt := t.Elem(); tt.Kind() == reflect.Pointer {
-			panic("does not support pointer to interface")
-		} else {
-			if reflect.ValueOf(v).IsZero() {
-				vv := reflect.New(tt)
-				return vv.Interface()
-			}
+func CopyInterfaceValues(src, dst interface{}) (err error) {
+	defer func() { // method contains reflections, so it may panic
+		if p := recover(); p != nil {
+			err = fmt.Errorf("unable to copy interface values: %v", p)
 		}
-
-	}
-	return reflect.New(t).Interface()
-}
-
-func GetUnderlyingType(v interface{}) reflect.Type {
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
-		return t.Elem()
-	}
-	return t
+	}()
+	reflect.Indirect(reflect.ValueOf(dst)).Set(reflect.Indirect(reflect.ValueOf(src)))
+	return
 }

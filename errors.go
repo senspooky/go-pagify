@@ -1,3 +1,3 @@
-package paginator
+package pagify
 
 var PaginatorError string
