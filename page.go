@@ -1,12 +1,15 @@
 package pagify
 
-import "errors"
+import (
+	"errors"
+)
 
 // Represents the state of a page before the request has been run
 type NewPage interface {
-	SetRequestFunc(func(Response) (Response, error))
-	SetNextPageRequestFunc(func(Response) (Response, error))
+	SetRequestFunc(func(Response, Response) error)
+	SetNextPageRequestFunc(func(Response, Response) error)
 	SetHasNextFunc(func(Response) bool)
+	SetMetadataTypes(map[string]interface{})
 	InitPage() (ProcessedPage, error)
 }
 type ProcessedPage interface {
@@ -28,9 +31,12 @@ type page struct {
 
 	// configuration fields
 
-	requestFunc     func(Response) (Response, error)
-	nextRequestFunc func(Response) (Response, error)
+	requestFunc     func(Response, Response) error
+	nextRequestFunc func(Response, Response) error
 	hasNextFunc     func(Response) bool
+
+	// metadata fields
+	metadataTypes map[string]interface{}
 }
 
 func (P *page) getPrevResponse() Response {
@@ -71,11 +77,11 @@ func (P *page) GetPrevPage() ProcessedPage {
 // Setters
 // These are available on a page that has been created from scratch
 // and not from a paginator object
-func (P *page) SetRequestFunc(f func(Response) (Response, error)) {
+func (P *page) SetRequestFunc(f func(Response, Response) error) {
 	P.requestFunc = f
 }
 
-func (P *page) SetNextPageRequestFunc(f func(Response) (Response, error)) {
+func (P *page) SetNextPageRequestFunc(f func(Response, Response) error) {
 	P.nextRequestFunc = f
 }
 
@@ -85,17 +91,17 @@ func (P *page) SetHasNextFunc(f func(Response) bool) {
 
 // Runs the request on the page, fills out dependant data, and returns itself
 func (P *page) InitPage() (ProcessedPage, error) {
+	P.resp = &response{}
 	if P.requestFunc == nil {
 		return nil, errors.New("request function not set")
 	}
-	resp, err := P.requestFunc(P.getPrevResponse())
+	err := P.requestFunc(P.getPrevResponse(), P.resp)
 	if err != nil {
 		return nil, err
 	}
 	if P.hasNextFunc == nil {
 		return nil, errors.New("has next function not set")
 	}
-	P.hasNext = P.hasNextFunc(resp)
-	P.resp = resp
+	P.hasNext = P.hasNextFunc(P.resp)
 	return P, nil
 }

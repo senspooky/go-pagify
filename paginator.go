@@ -5,7 +5,7 @@ type Paginator struct {
 	// configuration fields
 
 	preloadAllPages   bool
-	commonPageRequest func(Response) (Response, error)
+	commonPageRequest func(Response, Response) error
 	commonHasNext     func(Response) bool
 }
 
@@ -21,7 +21,7 @@ func P() *Paginator {
 // page exists.
 // Returns the current page's response. A nil body is valid and if
 // returned without an error, it is assumed the page does not exist.
-func (P *Paginator) SetCommonPageRequestFunc(f func(Response) (Response, error)) *Paginator {
+func (P *Paginator) SetCommonPageRequestFunc(f func(Response, Response) error) *Paginator {
 	P.commonPageRequest = f
 	return P
 }
@@ -32,7 +32,7 @@ func (P *Paginator) SetCommonHasNextFunc(f func(Response) bool) *Paginator {
 }
 
 // Returns the first page of the paginated resource
-func (P *Paginator) GetFirstPage(r func(Response) (Response, error)) (ProcessedPage, error) {
+func (P *Paginator) GetFirstPage(r func(Response, Response) error) (ProcessedPage, error) {
 	return (&page{
 		requestFunc:     r,
 		nextRequestFunc: P.commonPageRequest,
@@ -43,7 +43,7 @@ func (P *Paginator) GetFirstPage(r func(Response) (Response, error)) (ProcessedP
 // Iterator for the paginated resource.
 // Takes a function representing thhe frist page request, and a function that will be called on each page.
 // If the provided function returns an error, the iteration will stop and the error will be returned.
-func (P *Paginator) IteratePages(r func(Response) (Response, error), f func(Response) error) error {
+func (P *Paginator) IteratePages(r func(Response, Response) error, f func(Response) error) error {
 	page, err := P.GetFirstPage(r)
 	if err != nil {
 		return err

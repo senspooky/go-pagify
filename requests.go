@@ -1,62 +1,68 @@
 package pagify
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/SenatorSpooky/go-pagify/pkg/utils"
 )
 
+// Represents a newly created response object
 type Response interface {
-	GetRequest() *http.Request     // Get the request object that was used to make the request
-	GetResponse() *http.Response   // Get the response object that was returned by the request
-	GetBodyInterface() interface{} // Get the body of the response as an interface
-	GetBodyAs(interface{}) error   // Get the body of the response as the type of the passed interface
-}
-
-// creates a new object implementing the Response interface
-// accepts a http.Request, http.Response and zero or one interfaces representing the request's body
-// will not write a body if a number of interfaces other than 1 are passed
-func NewResponse(req *http.Request, resp *http.Response, b ...interface{}) Response {
-	r := &response{
-		request:  req,
-		response: resp,
-	}
-	if len(b) == 1 {
-		r.body = b[0]
-	}
-	return r
+	GetRequest() *http.Request           // Get the request object that was used to make the request
+	GetResponse() *http.Response         // Get the response object that was returned by the request
+	GetMetadata() interface{}            // Get set metadata of the response
+	CreateResponse() (Response, error)   // Create a new response object
+	SetRequest(*http.Request) Response   // Get the request object that was used to make the request
+	SetResponse(*http.Response) Response // Get the response object that was returned by the request
+	SetMetadata(interface{}) error       // Get set metadata of the response
 }
 
 type response struct {
 	request  *http.Request
 	response *http.Response
-	body     interface{}
+	metadata interface{}
 }
 
-func (r *response) GetRequest() *http.Request {
+func (r response) GetRequest() *http.Request {
 	return r.request
 }
 
-func (r *response) SetRequest(request *http.Request) {
+func (r *response) SetRequest(request *http.Request) Response {
 	r.request = request
+	return r
 }
 
-func (r *response) GetResponse() *http.Response {
+func (r response) GetResponse() *http.Response {
 	return r.response
 }
 
-func (r *response) SetResponse(response *http.Response) {
+func (r *response) SetResponse(response *http.Response) Response {
 	r.response = response
+	return r
 }
 
-func (r *response) GetBodyInterface() interface{} {
-	return r.body
+func (r response) GetMetadata() interface{} {
+	return r.metadata
 }
 
-func (r *response) SetBody(body interface{}) {
-	r.body = body
+func (r *response) SetMetadata(m interface{}) error {
+	if r.metadata == nil || utils.CompareTyes(r.metadata, m) {
+		r.metadata = m
+		return nil
+	}
+	return errors.New("metadata type mismatch")
 }
 
-func (r *response) GetBodyAs(v interface{}) error {
-	return utils.CopyInterfaceValues(r.body, v)
+func (r response) CreateResponse() (Response, error) {
+	if r.metadata == nil {
+		return &response{}, nil
+	}
+	v, err := utils.GetNewPointerToInterface(r.metadata)
+	if err != nil {
+		return nil, err
+	}
+	return &response{
+		metadata: v, // Allows for type "enforcement" when passing objects between requests
+	}, nil
 }
