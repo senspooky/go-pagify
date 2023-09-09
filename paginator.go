@@ -1,62 +1,49 @@
 package pagify
 
-type Paginator struct {
-
-	// configuration fields
-
-	preloadAllPages   bool
-	commonPageRequest func(Response, Response) error
-	commonHasNext     func(Response) bool
+// Paginator represents a controller for paginating a response or set of responses.
+//
+// It's type parameter T is the type of data you want to pass between page requests as a refererence to the next page
+// of the paginated resource.
+type Paginator[T any] interface {
+	// SetSubsequentRequestFunc sets the function that will be called to get subsequent pages of the paginated resource
+	// beyond the first page.
+	SetCommonSubsequentRequestFunc(func(T) (T, error)) Paginator[T]
+	// SetCommonHasNextFunc sets the function that will be called to determine if there is a next page of the paginated
+	// resource. This function takes in the current page's request return, and should return true if there is a next
+	// page, and false if there is not.
+	//
+	// If this is not set, pages will assume that a zero-valued or nil-valued return from the most recent request
+	// indicates that there is no next page.
+	SetCommonHasNextFunc(func(T) bool) Paginator[T]
 }
 
-func P() *Paginator {
-	return &Paginator{}
+type pageController[T any] struct {
+	subsequentRequestFunc func(T) (T, error)
+	commonHasNextFunc     func(T) bool
 }
 
-// Coniguration for the paginator
-
-// Defines the common function used to construct and create subsequent pages beyond the first,
-// based on details from the previous request.
-// Takes a function, whose paramaters are the previous page's response to the request, and is nil if no previous
-// page exists.
-// Returns the current page's response. A nil body is valid and if
-// returned without an error, it is assumed the page does not exist.
-func (P *Paginator) SetCommonPageRequestFunc(f func(Response, Response) error) *Paginator {
-	P.commonPageRequest = f
-	return P
+func (p *pageController[T]) SetCommonHasNextFunc(f func(T) bool) Paginator[T] {
+	p.commonHasNextFunc = f
+	return p
 }
 
-func (P *Paginator) SetCommonHasNextFunc(f func(Response) bool) *Paginator {
-	P.commonHasNext = f
-	return P
+func (p *pageController[T]) SetCommonSubsequentRequestFunc(f func(T) (T, error)) Paginator[T] {
+	p.subsequentRequestFunc = f
+	return p
+}
+
+func (p *pageController[T]) getCommonHasNextFunc() func(T) bool {
+	if p.commonHasNextFunc == nil {
+		return func(t T) bool {
+			return false
+		}
+	}
+	return p.commonHasNextFunc
 }
 
 // Returns the first page of the paginated resource
-func (P *Paginator) GetFirstPage(r func(Response, Response) error) (ProcessedPage, error) {
-	return (&page{
-		requestFunc:     r,
-		nextRequestFunc: P.commonPageRequest,
-		hasNextFunc:     P.commonHasNext,
-	}).InitPage()
-}
-
-// Iterator for the paginated resource.
-// Takes a function representing thhe frist page request, and a function that will be called on each page.
-// If the provided function returns an error, the iteration will stop and the error will be returned.
-func (P *Paginator) IteratePages(r func(Response, Response) error, f func(Response) error) error {
-	page, err := P.GetFirstPage(r)
-	if err != nil {
-		return err
-	}
-	for page != nil {
-		err = f(page.GetResponse())
-		if err != nil {
-			return err
-		}
-		page, err = page.GetNextPage()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func (p *pageController[T]) GetFirstPage() (Page[T], error) {
+	return &page[T]{
+		run: true,
+	}, nil
 }

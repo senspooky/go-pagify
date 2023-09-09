@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/senspooky/go-pagify/pkg/utils"
+	"github.com/senspooky/go-pagify/internal/utils"
 )
 
 // Represents a newly created response object
